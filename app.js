@@ -54,13 +54,35 @@ function round1(v) {
 
 function $(id) { return document.getElementById(id); }
 
-function init() {
+function populateVenues(venues) {
   const venueSel = $("venue");
-  for (const v of VENUES) {
+  venueSel.innerHTML = "";
+  for (const v of venues) {
     const opt = document.createElement("option");
     opt.value = v; opt.textContent = v;
     venueSel.appendChild(opt);
   }
+  venueSel.disabled = false;
+}
+
+async function loadActiveVenues() {
+  // 開催中(今日レースがある)場だけを選択肢にする。取得に失敗した場合だけ、
+  // ツールを完全に使えなくしないよう全24場にフォールバックする。
+  setStatus("開催場を確認中…");
+  const qs = new URLSearchParams({ action: "schedules", date: jstToday() });
+  try {
+    const data = await fetchJson(`${API_BASE}/api/yoso?${qs.toString()}`, { cache: "no-store" });
+    const statuses = data?.statusesByVenue || {};
+    const active = VENUES.filter((v) => statuses[v]?.ok !== false && !statuses[v]?.noRace);
+    populateVenues(active.length ? active : VENUES);
+    setStatus(active.length ? "" : "本日開催中の場を確認できませんでした。全場を表示しています");
+  } catch (e) {
+    populateVenues(VENUES);
+    setStatus("開催場の確認に失敗したため、全場を表示しています");
+  }
+}
+
+function init() {
   const raceSel = $("raceNo");
   for (let r = 1; r <= 12; r++) {
     const opt = document.createElement("option");
@@ -71,6 +93,7 @@ function init() {
   // 位置づけと合わないため、常に本日のレースだけを対象にする。
   $("raceDateDisplay").textContent = `${jstToday()}（本日）`;
   $("go").addEventListener("click", onGo);
+  loadActiveVenues();
 }
 
 function setStatus(msg, isError = false) {
