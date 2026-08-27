@@ -1,12 +1,18 @@
 // WAKE 無料公開版。ログイン不要。
 // newhunaken456(有料版と同一のVercelプロジェクト)の公開APIを叩くだけの軽量フロント。
 //   - /api/yoso        : 出走表・展示・気象を取得(ログイン不要、既存の有料版と共通)
+//   - /api/stats       : 選手の過去成績(race_results)を取得(ログイン不要、既存の有料版と共通)。
+//                        枠別成績(win1/ren2/ren3)をここから組み立てて/api/predictへ渡す。
+//                        これが無いと印判定の「枠別成績」項目が常にneutral扱いになり、
+//                        4項目チェックが最大3止まりになって◎が出せなくなる。
 //   - /api/predict     : AI予想を取得。Authorizationヘッダを付けないため、サーバー側で
-//                        自動的に縮小レスポンス(総合1位の艇・荒れ度バッジ・見送りAI判定のみ)になる。
-//                        買い目・全艇スコア・根拠の内訳はサーバー側で最初から除外されており、
-//                        このファイルにも一切含まれない。
+//                        自動的に縮小レスポンス(総合1位・2位の艇・荒れ度バッジ・見送りAI判定のみ)
+//                        になる。買い目・3位以下・スコア・根拠の内訳はサーバー側で最初から
+//                        除外されており、このファイルにも一切含まれない。
 
 const API_BASE = "https://newhunaken456.vercel.app";
+const RACER_CAT = "直近6ヶ月";
+const RACER_CAT_DAYS = 180;
 
 const VENUES = [
   "桐生", "戸田", "江戸川", "平和島", "多摩川", "浜名湖",
@@ -15,12 +21,35 @@ const VENUES = [
   "下関", "若松", "芦屋", "福岡", "唐津", "大村",
 ];
 
-function jstToday() {
+function jstParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(new Date());
+    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hour12: false,
+  }).formatToParts(date);
   const o = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-  return `${o.year}-${o.month}-${o.day}`;
+  return { dateStr: `${o.year}-${o.month}-${o.day}`, hour: Number(o.hour) };
+}
+
+function jstToday() {
+  return jstParts().dateStr;
+}
+
+// 有料版(src/App.jsx)のhistoryResultCutoffIso()と同じ考え方: 00:00〜07:59JSTは
+// 当日分の結果がまだ全国分揃っていない可能性があるため一昨日まで、8:00以降は昨日まで。
+function historyResultCutoffIso() {
+  const { dateStr, hour } = jstParts();
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + (hour < 8 ? -2 : -1));
+  return d.toISOString().slice(0, 10);
+}
+
+function daysAgoIso(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - Number(days || 0));
+  return d.toISOString().slice(0, 10);
+}
+
+function round1(v) {
+  return Math.round(Number(v || 0) * 10) / 10;
 }
 
 function $(id) { return document.getElementById(id); }
@@ -65,6 +94,46 @@ function boatsFromRacers(racers) {
     if (r?.boat) byBoat[r.boat] = r;
   }
   return byBoat;
+}
+
+async function fetchRaceResultsForRacers(regnos) {
+  const nums = [...new Set((regnos || []).map((v) => Number(v)).filter(Boolean))];
+  if (!nums.length) return [];
+  const qs = new URLSearchParams({
+    action: "race_results_by_regno",
+    regnos: nums.join(","),
+    days: String(RACER_CAT_DAYS),
+    toDate: historyResultCutoffIso(),
+  });
+  const data = await fetchJson(`${API_BASE}/api/stats?${qs.toString()}`, { cache: "no-store" });
+  if (!data?.ok) throw new Error(data?.error || "選手成績の取得に失敗しました");
+  return Array.isArray(data.rows) ? data.rows : [];
+}
+
+// 有料版のbuildRacerCourseStatsFromDb(src/App.jsx)と同じ集計。
+// 本人の登録番号×進入コースで絞った直近成績から1着率/2連対率/3連対率を出す。
+function buildRacerStats(rows, regnoByBoat, coursesByBoat) {
+  const win1 = Array(6).fill(null);
+  const ren2 = Array(6).fill(null);
+  const ren3 = Array(6).fill(null);
+  const from = daysAgoIso(RACER_CAT_DAYS);
+
+  for (let b = 1; b <= 6; b++) {
+    const regno = Number(regnoByBoat[b] || 0);
+    const course = Number(coursesByBoat[b] || 0);
+    if (!regno || !course) continue;
+    const filtered = (rows || []).filter((r) => {
+      const rd = String(r.race_date || "").slice(0, 10);
+      return Number(r.regno) === regno && Number(r.course) === course && rd >= from && r.rank != null;
+    });
+    const n = filtered.length;
+    if (!n) continue;
+    win1[b - 1] = round1((filtered.filter((r) => Number(r.rank) === 1).length / n) * 100);
+    ren2[b - 1] = round1((filtered.filter((r) => Number(r.rank) <= 2).length / n) * 100);
+    ren3[b - 1] = round1((filtered.filter((r) => Number(r.rank) <= 3).length / n) * 100);
+  }
+
+  return { win1: { [RACER_CAT]: win1 }, ren2: { [RACER_CAT]: ren2 }, ren3: { [RACER_CAT]: ren3 } };
 }
 
 async function onGo() {
@@ -114,13 +183,27 @@ async function onGo() {
       };
     }
 
+    const regnoByBoat = {};
+    const sts = {};
+    for (let b = 1; b <= 6; b++) {
+      regnoByBoat[b] = Number(byBoat[b]?.regNo || 0);
+      sts[b] = byBoat[b]?.avgST || "";
+    }
+    // motors(モーター2連率/3連率)は出走表(str3)の時点で分かっている値。/api/yosoが
+    // 既にracersToMotorMap()で組み立て済みのものをそのまま使う。
+    const motors = yoso.motors && typeof yoso.motors === "object" ? yoso.motors : {};
+
+    const raceResultRows = await fetchRaceResultsForRacers(Object.values(regnoByBoat));
+    const racerStats = buildRacerStats(raceResultRows, regnoByBoat, courses);
+
     // Authorizationヘッダを付けない = 匿名呼び出し。サーバー側(api/predict.js)が
-    // これを検知して、総合1位の艇・荒れ度バッジ・見送りAI判定だけの縮小レスポンスを返す。
+    // これを検知して、総合1位・2位の艇・荒れ度バッジ・見送りAI判定だけの縮小レスポンスを返す。
     const predict = await fetchJson(`${API_BASE}/api/predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        venue, raceDate, raceNo, courses, inputs, wind: "無風",
+        venue, raceDate, raceNo, courses, inputs, sts, motors,
+        racerStats, racerCat: RACER_CAT, wind: "無風",
       }),
     });
     if (!predict?.ok) throw new Error(predict?.error || "予想の計算に失敗しました");
@@ -153,20 +236,24 @@ function renderBoatsOnly(byBoat, venue, raceNo, raceDate) {
 }
 
 function renderResult(byBoat, courses, aiEval, venue, raceNo, raceDate) {
-  $("resultTitle").textContent = `${venue} ${raceNo}R（${raceDate}）AI予想`;
-  const topBoat = aiEval?.top?.boat || null;
+  $("resultTitle").textContent = `${venue} ${raceNo}R（${raceDate}）AI予想 総合上位2艇`;
 
   const boatsEl = $("boats");
   boatsEl.innerHTML = "";
-  for (let b = 1; b <= 6; b++) {
+  const picks = [
+    { rank: "総合1位", entry: aiEval?.top },
+    { rank: "総合2位", entry: aiEval?.second },
+  ];
+  for (const { rank, entry } of picks) {
+    if (!entry?.boat) continue;
+    const b = entry.boat;
     const r = byBoat[b];
-    const isTop = topBoat === b;
     const div = document.createElement("div");
-    div.className = `boat${isTop ? " top" : ""}`;
+    div.className = "boat top";
     div.innerHTML = `
       <div class="no">${b}</div>
-      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}</span></div>
-      <div class="mark">${isTop ? (aiEval?.top?.mark || "◎") : ""}</div>
+      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}・${rank}</span></div>
+      <div class="mark">${entry.mark || ""}</div>
     `;
     boatsEl.appendChild(div);
   }
