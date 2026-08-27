@@ -106,6 +106,33 @@ function init() {
   $("raceDateDisplay").textContent = `${jstToday()}（本日）`;
   $("go").addEventListener("click", onGo);
   loadActiveVenues();
+  initDiscordNotice();
+}
+
+// 有料版が実際に入る価値があるか、無料版だけでは判断しづらいという声を踏まえ、
+// 実際の有料会員と交流できるDiscordへの案内を一度だけ表示する。
+const DISCORD_NOTICE_ACK_KEY = "wake_free_notice_discord_20260827_ack_v1";
+
+function hasDiscordNoticeAck() {
+  try { return localStorage.getItem(DISCORD_NOTICE_ACK_KEY) === "1"; }
+  catch { return false; }
+}
+
+function persistDiscordNoticeAck() {
+  try { localStorage.setItem(DISCORD_NOTICE_ACK_KEY, "1"); } catch { /* noop */ }
+}
+
+function initDiscordNotice() {
+  if (hasDiscordNoticeAck()) return;
+  const overlay = $("discordNotice");
+  if (!overlay) return;
+  const close = () => {
+    persistDiscordNoticeAck();
+    overlay.classList.add("hidden");
+  };
+  $("discordJoin").addEventListener("click", close);
+  $("discordLater").addEventListener("click", close);
+  overlay.classList.remove("hidden");
 }
 
 function setStatus(msg, isError = false) {
