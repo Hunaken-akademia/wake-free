@@ -7,8 +7,8 @@
 //                        4項目チェックが最大3止まりになって◎が出せなくなる。
 //   - /api/predict     : AI予想を取得。Authorizationヘッダを付けないため、サーバー側で
 //                        自動的に縮小レスポンス(総合1位・2位の艇・荒れ度バッジ・見送りAI判定・
-//                        上位2艇の予想1着率のみ)になる。買い目・3位以下・スコア・根拠の
-//                        内訳はサーバー側で最初から除外されており、このファイルにも一切含まれない。
+//                        1〜6号艇全艇の予想1着率、印は上位2艇のみ)になる。買い目・スコア・
+//                        根拠の内訳はサーバー側で最初から除外されており、このファイルにも一切含まれない。
 
 const API_BASE = "https://newhunaken456.vercel.app";
 const RACER_CAT = "直近6ヶ月";
@@ -246,26 +246,25 @@ async function onGo() {
 }
 
 function renderResult(byBoat, courses, aiEval, venue, raceNo, raceDate) {
-  $("resultTitle").textContent = `${venue} ${raceNo}R（${raceDate}）AI予想 総合上位2艇`;
+  $("resultTitle").textContent = `${venue} ${raceNo}R（${raceDate}）AI予想`;
 
   const boatsEl = $("boats");
   boatsEl.innerHTML = "";
-  const picks = [
-    { rank: "総合1位", entry: aiEval?.top },
-    { rank: "総合2位", entry: aiEval?.second },
-  ];
-  for (const { rank, entry } of picks) {
-    if (!entry?.boat) continue;
-    const b = entry.boat;
+  // 印(◎○)は従来どおり総合上位2艇だけ。予想1着率は1〜6号艇すべて表示する。
+  const win1ByBoat = {};
+  for (const w of aiEval?.win1ByBoat || []) win1ByBoat[w.boat] = w;
+
+  for (let b = 1; b <= 6; b++) {
     const r = byBoat[b];
+    const w = win1ByBoat[b];
     const div = document.createElement("div");
-    div.className = "boat top";
+    div.className = w?.mark ? "boat top" : "boat";
     div.innerHTML = `
       <div class="no">${b}</div>
-      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}・${rank}</span>
-        ${entry.win1 != null ? `<div class="win1">予想1着率 <b>${entry.win1}%</b></div>` : ""}
+      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}</span>
+        ${w?.win1 != null ? `<div class="win1">予想1着率 <b>${w.win1}%</b></div>` : ""}
       </div>
-      <div class="mark">${entry.mark || ""}</div>
+      <div class="mark">${w?.mark || ""}</div>
     `;
     boatsEl.appendChild(div);
   }
