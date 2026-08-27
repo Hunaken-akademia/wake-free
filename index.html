@@ -105,60 +105,24 @@
     border-radius: 12px; padding: 13px 16px;
   }
 
-  /* 有料版イメージ(サンプル) */
-  .preview {
-    position: relative; border: 1px solid var(--border); border-radius: 12px;
-    background: var(--panel-2); padding: 14px 14px 12px; overflow: hidden;
+  /* 有料版イメージ(実際の画面のスクリーンショット) */
+  .shots {
+    display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    margin: 0 -2px;
   }
-  .preview-tag {
-    position: absolute; top: 10px; right: 10px;
-    font-size: 10px; letter-spacing: .08em; font-weight: 800;
-    color: var(--text-faint); border: 1px solid var(--border); border-radius: 999px;
-    padding: 3px 9px; background: var(--panel);
+  .shot {
+    flex: 0 0 78%; scroll-snap-align: start;
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--panel-2);
   }
-  .preview-rows { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
-  .preview-row {
-    display: flex; align-items: center; gap: 8px; padding: 5px 0;
-    border-bottom: 1px dashed rgba(255,255,255,.06); font-size: 12px;
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot figcaption {
+    padding: 10px 12px 12px; font-size: 12px; line-height: 1.6; color: var(--text-dim);
   }
-  .preview-row:last-child { border-bottom: none; }
-  .preview-row .no {
-    flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 900; background: #1b3048; color: var(--text-dim);
-  }
-  .preview-row.locked .no { opacity: .5; }
-  .preview-row .pname { flex: 1; font-weight: 700; color: var(--text-dim); }
-  .preview-row.locked .pname { color: var(--text-faint); }
-  .preview-row .pmark { flex: 0 0 auto; width: 18px; text-align: center; font-weight: 900; }
-  .preview-row.locked .pmark { color: var(--text-faint); }
-
-  .preview-breakdown {
-    margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
-  }
-  .preview-breakdown .pb-label {
-    font-size: 10px; letter-spacing: .08em; color: var(--text-faint); font-weight: 800; margin-bottom: 8px;
-  }
-  .preview-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .preview-chip {
-    font-size: 11px; font-weight: 700; color: var(--text-dim);
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 8px; padding: 5px 9px;
-  }
-  .preview-chip b { color: var(--text); font-weight: 900; }
-
-  .preview-tickets { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .preview-tickets .pt-label {
-    font-size: 10px; letter-spacing: .08em; color: var(--text-faint); font-weight: 800; margin-bottom: 8px;
-  }
-  .preview-ticket-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 4px; }
-  .preview-ticket-row .pt-tag {
-    flex: 0 0 auto; font-size: 10px; font-weight: 800; color: #1a2433;
-    background: var(--accent-2); border-radius: 6px; padding: 2px 7px;
-  }
-  .preview-ticket-row code {
-    color: var(--text-dim); font-family: inherit; letter-spacing: .05em;
-    filter: blur(3px); user-select: none;
+  .shot figcaption b { color: var(--text); }
+  .shots-hint {
+    font-size: 11px; color: var(--text-faint); text-align: right; margin: -4px 0 12px;
   }
 
   .note {
@@ -207,35 +171,17 @@
   <div class="cta">
     <div class="head">実際はこんな風に見れます</div>
 
-    <div class="preview">
-      <span class="preview-tag">有料版イメージ（サンプル）</span>
-      <div class="preview-rows">
-        <div class="preview-row"><div class="no">1</div><div class="pname">1号艇の選手名</div><div class="pmark">◎</div></div>
-        <div class="preview-row"><div class="no">4</div><div class="pname">4号艇の選手名</div><div class="pmark">○</div></div>
-        <div class="preview-row locked"><div class="no">2</div><div class="pname">2号艇の選手名</div><div class="pmark">○</div></div>
-        <div class="preview-row locked"><div class="no">6</div><div class="pname">6号艇の選手名</div><div class="pmark">△</div></div>
-        <div class="preview-row locked"><div class="no">3</div><div class="pname">3号艇の選手名</div><div class="pmark">△</div></div>
-        <div class="preview-row locked"><div class="no">5</div><div class="pname">5号艇の選手名</div><div class="pmark">✕</div></div>
-      </div>
-
-      <div class="preview-breakdown">
-        <div class="pb-label">◎の内訳（サンプル）</div>
-        <div class="preview-chips">
-          <span class="preview-chip">枠別成績 <b>78.3%</b></span>
-          <span class="preview-chip">平均ST <b>0.13</b></span>
-          <span class="preview-chip">モーター2連率 <b>58.0%</b></span>
-          <span class="preview-chip">決まり手 <b>逃げ優勢</b></span>
-          <span class="preview-chip">攻められ耐性 <b>A</b></span>
-        </div>
-      </div>
-
-      <div class="preview-tickets">
-        <div class="pt-label">買い目（サンプル・要有料版）</div>
-        <div class="preview-ticket-row"><span class="pt-tag">本命</span><code>1→4→2</code></div>
-        <div class="preview-ticket-row"><span class="pt-tag">対抗</span><code>1→2→4</code></div>
-        <div class="preview-ticket-row"><span class="pt-tag">穴</span><code>4→1→6</code></div>
-      </div>
+    <div class="shots">
+      <figure class="shot">
+        <img src="assets/preview-breakdown.jpg" alt="有料版の評価内訳画面。◎の合計点と、枠別成績・展示・モーター・STそれぞれの配点、判定の根拠コメントが表示されている" loading="lazy" />
+        <figcaption><b>①なぜその印か、内訳まで見える</b><br>枠別成績・展示・モーター・STを項目別に採点</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/preview-tickets.jpg" alt="有料版の買い目画面。本命・対抗の具体的な3連単の組み合わせと合成オッズが表示されている" loading="lazy" />
+        <figcaption><b>②具体的な買い目まで</b><br>本命・対抗・穴の3連単と合成オッズ</figcaption>
+      </figure>
     </div>
+    <p class="shots-hint">← スワイプで次の画面 →</p>
 
     <ul>
       <li>そのほか、1番人気との一致判定や見送りAIの数値根拠も見られます</li>
