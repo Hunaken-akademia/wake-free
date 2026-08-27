@@ -6,9 +6,9 @@
 //                        これが無いと印判定の「枠別成績」項目が常にneutral扱いになり、
 //                        4項目チェックが最大3止まりになって◎が出せなくなる。
 //   - /api/predict     : AI予想を取得。Authorizationヘッダを付けないため、サーバー側で
-//                        自動的に縮小レスポンス(総合1位・2位の艇・荒れ度バッジ・見送りAI判定のみ)
-//                        になる。買い目・3位以下・スコア・根拠の内訳はサーバー側で最初から
-//                        除外されており、このファイルにも一切含まれない。
+//                        自動的に縮小レスポンス(総合1位・2位の艇・荒れ度バッジ・見送りAI判定・
+//                        上位2艇の予想3連対率のみ)になる。買い目・3位以下・スコア・根拠の
+//                        内訳はサーバー側で最初から除外されており、このファイルにも一切含まれない。
 
 const API_BASE = "https://newhunaken456.vercel.app";
 const RACER_CAT = "直近6ヶ月";
@@ -262,7 +262,9 @@ function renderResult(byBoat, courses, aiEval, venue, raceNo, raceDate) {
     div.className = "boat top";
     div.innerHTML = `
       <div class="no">${b}</div>
-      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}・${rank}</span></div>
+      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}・${rank}</span>
+        ${entry.ren3 != null ? `<div class="ren3">予想3連対率 <b>${entry.ren3}%</b></div>` : ""}
+      </div>
       <div class="mark">${entry.mark || ""}</div>
     `;
     boatsEl.appendChild(div);
