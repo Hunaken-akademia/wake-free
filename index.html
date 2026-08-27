@@ -48,10 +48,15 @@
   .row { display: flex; gap: 10px; flex-wrap: wrap; }
   .field { flex: 1 1 140px; display: flex; flex-direction: column; gap: 6px; }
   label { font-size: 11px; color: var(--text-dim); font-weight: 700; }
-  select, input[type="date"] {
+  select {
     background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
     border-radius: 10px; padding: 10px 12px; font-size: 14px; width: 100%;
     font-family: inherit;
+  }
+  .date-fixed {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 10px; padding: 10px 12px; font-size: 14px; width: 100%;
+    box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   button.primary {
     width: 100%; border: none; border-radius: 12px; padding: 14px 16px;
@@ -129,8 +134,8 @@
         <select id="raceNo"></select>
       </div>
       <div class="field">
-        <label for="raceDate">日付</label>
-        <input type="date" id="raceDate" />
+        <label>日付</label>
+        <div class="date-fixed" id="raceDateDisplay"></div>
       </div>
     </div>
     <button class="primary" id="go">この場・Rの予想を見る</button>

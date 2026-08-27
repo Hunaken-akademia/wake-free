@@ -67,7 +67,9 @@ function init() {
     opt.value = String(r); opt.textContent = `${r}R`;
     raceSel.appendChild(opt);
   }
-  $("raceDate").value = jstToday();
+  // 日付は当日固定(選択不可)。過去日の予想は的中が確認できてしまい無料版の
+  // 位置づけと合わないため、常に本日のレースだけを対象にする。
+  $("raceDateDisplay").textContent = `${jstToday()}（本日）`;
   $("go").addEventListener("click", onGo);
 }
 
@@ -139,8 +141,8 @@ function buildRacerStats(rows, regnoByBoat, coursesByBoat) {
 async function onGo() {
   const venue = $("venue").value;
   const raceNo = $("raceNo").value;
-  const raceDate = $("raceDate").value;
-  if (!venue || !raceDate) return;
+  const raceDate = jstToday();
+  if (!venue) return;
 
   $("go").disabled = true;
   $("resultCard").classList.add("hidden");
@@ -153,7 +155,7 @@ async function onGo() {
 
     const byBoat = boatsFromRacers(yoso.racers);
     if (!Object.keys(byBoat).length) {
-      throw new Error("この場・Rの出走表がまだ見つかりません。日付やRを確認してください");
+      throw new Error("この場・Rの出走表がまだ見つかりません。時間をおいて再度お試しください");
     }
 
     const rows = Array.isArray(yoso.rows) ? yoso.rows : [];
@@ -163,8 +165,9 @@ async function onGo() {
       && [1, 2, 3, 4, 5, 6].every((b) => rowsByBoat[b]?.tenji);
 
     if (!hasFullDisplay) {
-      renderBoatsOnly(byBoat, venue, raceNo, raceDate);
-      setStatus("この場・Rはまだ展示が発表されていません。展示発表後にAI予想が表示されます。");
+      // 展示未取得(締切が近すぎる/遠すぎる等)の間は、根拠の薄い出走表だけの
+      // 表示はせず、その旨だけを伝える。
+      setStatus("展示未取得のため表示出来ません。");
       return;
     }
 
@@ -215,24 +218,6 @@ async function onGo() {
   } finally {
     $("go").disabled = false;
   }
-}
-
-function renderBoatsOnly(byBoat, venue, raceNo, raceDate) {
-  $("resultTitle").textContent = `${venue} ${raceNo}R（${raceDate}）出走表`;
-  const boatsEl = $("boats");
-  boatsEl.innerHTML = "";
-  for (let b = 1; b <= 6; b++) {
-    const r = byBoat[b];
-    const div = document.createElement("div");
-    div.className = "boat";
-    div.innerHTML = `
-      <div class="no">${b}</div>
-      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}</span></div>
-    `;
-    boatsEl.appendChild(div);
-  }
-  $("pills").innerHTML = "";
-  $("resultCard").classList.remove("hidden");
 }
 
 function renderResult(byBoat, courses, aiEval, venue, raceNo, raceDate) {
