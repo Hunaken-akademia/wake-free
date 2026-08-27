@@ -14,6 +14,16 @@ const API_BASE = "https://newhunaken456.vercel.app";
 const RACER_CAT = "直近6ヶ月";
 const RACER_CAT_DAYS = 180;
 
+// 競艇の艇番色(有料版と同じ配色)。1白/2黒/3赤/4青/5黄/6緑。
+const LANE = {
+  1: { bg: "#f5f5f0", fg: "#1a1a1a" },
+  2: { bg: "#1a1a1a", fg: "#ffffff" },
+  3: { bg: "#d93025", fg: "#ffffff" },
+  4: { bg: "#1a73e8", fg: "#ffffff" },
+  5: { bg: "#f9c513", fg: "#1a1a1a" },
+  6: { bg: "#188038", fg: "#ffffff" },
+};
+
 // 江戸川・常滑は展示データが無いため、無料版の選択肢からは常に除外する
 // (開催中でも選べない。開催中の場だけに絞るloadActiveVenuesのフィルタ対象にもしない)。
 const VENUES = [
@@ -254,14 +264,20 @@ function renderResult(byBoat, courses, aiEval, venue, raceNo, raceDate) {
   const win1ByBoat = {};
   for (const w of aiEval?.win1ByBoat || []) win1ByBoat[w.boat] = w;
 
-  for (let b = 1; b <= 6; b++) {
+  // 表示順は艇番ではなく進入コース順(1コース→6コース)にする。
+  const boatByCourse = {};
+  for (let b = 1; b <= 6; b++) boatByCourse[Number(courses[b]) || b] = b;
+
+  for (let c = 1; c <= 6; c++) {
+    const b = boatByCourse[c] || c;
     const r = byBoat[b];
     const w = win1ByBoat[b];
+    const lane = LANE[b] || LANE[1];
     const div = document.createElement("div");
     div.className = w?.mark ? "boat top" : "boat";
     div.innerHTML = `
-      <div class="no">${b}</div>
-      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${courses[b]}</span>
+      <div class="no" style="background:${lane.bg};color:${lane.fg};">${b}</div>
+      <div class="name">${r?.name || "―"}<span class="grade">${r?.grade || ""}コース${c}</span>
         ${w?.win1 != null ? `<div class="win1">予想1着率 <b>${w.win1}%</b></div>` : ""}
       </div>
       <div class="mark">${w?.mark || ""}</div>
